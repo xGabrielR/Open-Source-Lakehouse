@@ -1,0 +1,44 @@
+version: "3"
+
+x-commons: &commons
+  networks:
+    - simple_stack
+
+# Client / Standalone Spark Cluster with one worker: https://spark.apache.org/docs/latest/spark-standalone.html
+
+services:
+  spark-master:
+    <<: *commons
+    image: spark-iceberg:3.4.2
+    container_name: spark-master
+    hostname: spark-master
+    entrypoint: "start-master.sh -p 7077"
+    environment:
+      SPARK_MODE: master
+      SPARK_USER: spark
+      SPARK_NO_DAEMONIZE: true # Keep container alive in Docker
+      SPARK_SSL_ENABLED: no
+      SPARK_RPC_ENCRYPTION_ENABLED: no
+      SPARK_RPC_AUTHENTICATION_ENABLED: no
+      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: no
+    ports:
+      - 8085:8080 # Spark Master
+      - 7077:7077
+      - 6066:6066 # Rest URL
+      - 4040:4040
+
+  spark-worker:
+    <<: *commons
+    image: spark-iceberg:3.4.2
+    entrypoint: "start-worker.sh spark://spark-master:7077"
+    environment:
+      SPARK_MODE: worker
+      SPARK_NO_DAEMONIZE: true # Keep container alive in Docker
+      SPARK_WORKER_MEMORY: 1G
+      SPARK_WORKER_CORES: 1
+    depends_on:
+      - spark-master
+
+networks:
+  simple_stack:
+    external: true

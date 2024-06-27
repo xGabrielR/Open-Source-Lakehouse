@@ -1,0 +1,63 @@
+version: "3"
+
+x-commons: &commons
+  networks:
+    - simple_stack
+
+services:
+  airflow:
+    <<: *commons
+    build: ./docker/airflow
+    depends_on:
+      - postgres
+    ports:
+      - 8080:8080
+    volumes:
+      - airflow_dags_volume:/root/airflow/dags
+
+  postgres:
+    <<: *commons
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres_admin
+      POSTGRES_PASSWORD: postgres_admin
+      POSTGRES_DB: airflow_db
+    ports:
+      - 5544:5432
+    volumes:
+      - airflow_metastore_volume:/var/lib/postgresql/data
+    
+  docker-socket-proxy:
+    <<: *commons
+    image: tecnativa/docker-socket-proxy:latest
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      AUTH: 1
+      POST: 1
+      EXEC: 1
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: always
+
+volumes:
+  airflow_dags_volume:
+    driver: local
+    name: airflow_dags_volume
+    driver_opts:
+      type: none
+      o: bind
+      device: ./airflow/dags
+
+  airflow_metastore_volume:
+    driver: local
+    name: airflow_metastore_volume
+    driver_opts:
+      type: none
+      o: bind
+      device: ./airflow/database
+
+networks:
+  simple_stack:
+    external: true

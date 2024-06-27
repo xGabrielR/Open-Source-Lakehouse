@@ -1,0 +1,48 @@
+version: "3"
+
+x-commons: &commons
+  networks:
+    - simple_stack
+
+services:
+  nessie:
+    <<: *commons
+    image: ghcr.io/projectnessie/nessie:0.61.0
+    container_name: nessie
+    ports:
+      - 19120:19120
+    depends_on:
+      - metastore_db
+    environment:
+      - nessie.version.store.type=JDBC
+      - quarkus.datasource.db-kind=postgresql 
+      - quarkus.datasource.username=jorgin
+      - quarkus.datasource.password=jorgin
+      - quarkus.datasource.jdbc.url=jdbc:postgresql://metastore_db:5433/db
+      - quarkus.datasource.jdbc.max-size=16
+
+  metastore_db:
+    <<: *commons
+    image: postgres:13
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: jorgin
+      POSTGRES_PASSWORD: jorgin
+    ports:
+      - 5433:5433
+    volumes:
+      - metastore_database_volume:/var/lib/postgresql/data
+    command: -p 5433
+
+volumes:
+  metastore_database_volume:
+    driver: local
+    name: metastore_database_volume
+    driver_opts:
+      type: none
+      o: bind
+      device: ./nessie/database
+
+networks:
+  simple_stack:
+    external: true
